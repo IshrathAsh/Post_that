@@ -1,0 +1,573 @@
+{
+  "name": "Post_that",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        224,
+        -16
+      ],
+      "id": "3cd2fe63-201a-47d8-9079-5ee1ec0df97f",
+      "name": "Telegram Trigger",
+      "webhookId": "f11ab6d2-1939-41f7-9fcb-0c0f361c27ae",
+      "executeOnce": false,
+      "credentials": {
+        "telegramApi": {
+          "id": "LAbdMxbdBuIo94dx",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Create an Instagram post based on the following text:\n\n\"{{ $json.message.text }}\"\n\nYour output must follow this format exactly:\n\n[Caption]\n[5 trendy hashtags]\nAvoid using word caption and hashtags in the output",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        512,
+        32
+      ],
+      "id": "f68d4cbf-c92e-48bd-a8b5-5d23dd0bd3b8",
+      "name": "Caption and Hashtag",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You will receive a short text as input. Using that text, generate a final prompt for an AI image generator.\n\nThe image must follow these rules:\n• Make a 1080x1080 Instagram post.\n• The input text must be clearly displayed, centered in the middle.\n• Choose background visuals that match the meaning, mood, or theme of the text (e.g., festival -> celebratory, emotional -> scenic, business -> minimal modern, greetings -> soft elegant, travel -> landscapes, inspirational -> sunrise, product tagline -> abstract or brand style).\n• Avoid any background clutter behind the text; the center must be clean for readability.\n• Use high-resolution realistic or premium illustration backgrounds (nature, abstract gradients, celebrations, minimal corporate themes, festival patterns, ocean, sky, mountains, city, etc., depending on content).\n• Typography: primarily elegant serif or modern clean sans-serif based on tone (classic -> serif, business/tech -> sans-serif, cultural/festival -> ornamental serif). Must be balanced, readable, with perfect contrast against the background.\n• No overlapping elements. No poor contrast. No text distortion.\n\nOUTPUT INSTRUCTIONS:\n• Output ONLY the final image prompt.\n• Must be 200+ words, highly descriptive, no explanations, do not repeat the text more than once, do not include instructions in the output.\n\nINPUT TEXT:\n\"{{ $json.message.text }}\"\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        512,
+        -224
+      ],
+      "id": "ffbac1c7-d37d-4573-99ed-31dfa45a5752",
+      "name": "Image Generation",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "result.image",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1360,
+        -608
+      ],
+      "id": "908b7c84-15de-447a-a163-b39b8f029727",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "url": "https://api.cloudflare.com/client/v4/accounts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        832,
+        -608
+      ],
+      "id": "bd56bce2-dd7a-45fe-8272-88af09b64c90",
+      "name": "Get accounts",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "swN8xdDXwxKWfOll",
+          "name": "Cloudflare"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.cloudflare.com/client/v4/accounts/{{ $json.result[0].id }}/ai/run/@cf/black-forest-labs/flux-1-schnell",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "=json",
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "jsonBody": "={{ \n\nJSON.stringify(\n  {\n    prompt: $('Setup workflow').item.json.prompt,\n    seed: $('Setup workflow').item.json.seed,\n    \"width\": $('Setup workflow').item.json.width,\n    \"height\": $('Setup workflow').item.json.height,\n    \"steps\": $('Setup workflow').item.json.steps\n  }\n) \n\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1072,
+        -608
+      ],
+      "id": "c791495d-fdb5-49db-999e-7548156c9e93",
+      "name": "Get Flux Schnell image",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "swN8xdDXwxKWfOll",
+          "name": "Cloudflare"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "prompt"
+            },
+            {
+              "name": "width",
+              "type": "number"
+            },
+            {
+              "name": "height",
+              "type": "number"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        16,
+        -624
+      ],
+      "id": "c6adf36a-9239-4352-b251-d69edca9d897",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "errorMessage": "The size of the image (width x height) is larger than 1 megapixel"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        640,
+        -752
+      ],
+      "id": "8c5d3006-d6ed-450f-846a-bd18bc07a0d3",
+      "name": "Image > 1 megapixel"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f6e30a82-76cd-4bfd-9bc5-b7fffb15e35c",
+              "leftValue": "={{ $json.width * $json.height > 1048576 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        432,
+        -624
+      ],
+      "id": "bc68bfef-b4f5-4cd0-a5aa-f5a20d50811b",
+      "name": "Check image size"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3f7d5020-0710-4f3c-858f-0485a2bd2963",
+              "name": "width",
+              "value": "={{ $json.width || 1024 }}",
+              "type": "number"
+            },
+            {
+              "id": "39b906fa-3e0b-45b9-9c1b-95cbc51e195d",
+              "name": "prompt",
+              "value": "={{ $json.prompt }}",
+              "type": "string"
+            },
+            {
+              "id": "3f8593d2-cfb3-437a-a9fc-4430995cb78f",
+              "name": "height",
+              "value": "={{ $json.height || 1024 }}",
+              "type": "number"
+            },
+            {
+              "id": "065181ef-404a-4860-9019-976e6e8391e0",
+              "name": "seed",
+              "value": "={{ Math.floor(Math.random() * 100000000) }}",
+              "type": "number"
+            },
+            {
+              "id": "2c131da3-e708-4468-bb09-d400e7e5f28c",
+              "name": "steps",
+              "value": 4,
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        -624
+      ],
+      "id": "dacc924c-af7a-42e3-b7f2-e96bdf9e396c",
+      "name": "Setup workflow"
+    },
+    {
+      "parameters": {
+        "content": "# 🚨Add the CloudFlare API token, read this carefully\n\n### Add the workers AI authentication template\n### Then edit the token, and add the `Accounts -> Account Settings (Read)` permission and save it",
+        "height": 496,
+        "width": 512
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        768,
+        -896
+      ],
+      "id": "c83dc96d-b6fc-4ccf-aa58-0b2a96c76cb0",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "t3aV6JhgZrp5v3LI",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/t3aV6JhgZrp5v3LI",
+          "cachedResultName": "Cloudflare Workers AI Flux subworkflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "prompt": "={{ $json.output }}",
+            "width": 720,
+            "height": 720
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "prompt",
+              "displayName": "prompt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "width",
+              "displayName": "width",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "height",
+              "displayName": "height",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        832,
+        -224
+      ],
+      "id": "c744a28c-8894-49ee-b271-7e32232cb955",
+      "name": "Call 'Cloudflare Workers AI Flux subworkflow'"
+    },
+    {
+      "parameters": {
+        "operation": "sendPhoto",
+        "chatId": "1469886457",
+        "binaryData": true,
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1056,
+        -224
+      ],
+      "id": "0a2830f7-c704-496c-9ce5-5715a9d9560f",
+      "name": "Send a photo message",
+      "webhookId": "8c15da1e-67b8-4336-a204-35554728e7bf",
+      "credentials": {
+        "telegramApi": {
+          "id": "LAbdMxbdBuIo94dx",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        160,
+        256
+      ],
+      "id": "0a3076fa-a250-4dbc-8cb5-6708bc261a2d",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "CmYDVNVbgDBb3G9X",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "1469886457",
+        "text": "={{ $('Caption and Hashtag').item.json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1056,
+        32
+      ],
+      "id": "c6be9938-2716-410f-9161-ca6e88e3a1c1",
+      "name": "Send a text message",
+      "webhookId": "cec63f41-356b-4136-b74e-e96841dae661",
+      "credentials": {
+        "telegramApi": {
+          "id": "LAbdMxbdBuIo94dx",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "name": "First item",
+          "code": 1
+        }
+      },
+      {
+        "json": {
+          "name": "Second item",
+          "code": 2
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Caption and Hashtag",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Image Generation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Caption and Hashtag": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image Generation": {
+      "main": [
+        [
+          {
+            "node": "Call 'Cloudflare Workers AI Flux subworkflow'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get accounts": {
+      "main": [
+        [
+          {
+            "node": "Get Flux Schnell image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Flux Schnell image": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Setup workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check image size": {
+      "main": [
+        [
+          {
+            "node": "Image > 1 megapixel",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get accounts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Setup workflow": {
+      "main": [
+        [
+          {
+            "node": "Check image size",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Cloudflare Workers AI Flux subworkflow'": {
+      "main": [
+        [
+          {
+            "node": "Send a photo message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        []
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Caption and Hashtag",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Image Generation",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a photo message": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "af3f4755-43ac-4dd6-ad67-70e61a643dcb",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9e27c2e2cc2d433ce7e56d516e0fa62cfa46fcd0dbf2c813ab594bd47aca3b60"
+  },
+  "id": "t3aV6JhgZrp5v3LI",
+  "tags": []
+}
