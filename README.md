@@ -124,4 +124,4 @@ Send a text prompt to a Telegram bot and the workflow will:
 <p><strong>Type an idea → Get a full post ready to publish.</strong></p>
 
 <hr/>
-<a src="https://www.notion.so/Post_that-N8N-Project-2b039954225380ac84d0f06dd68019ce?source=copy_link"><h3>Checkout My Notion - Scribble notes for some insights how I made this!</h3></a>
+<a href="https://www.notion.so/Post_that-N8N-Project-2b039954225380ac84d0f06dd68019ce?source=copy_link"><h3>Checkout My Notion - Scribble notes for some insights how I made this!</h3></a>
